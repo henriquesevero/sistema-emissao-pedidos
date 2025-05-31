@@ -13,7 +13,6 @@ def get_image_base64(image_path):
         data = f.read()
     return base64.b64encode(data).decode()
 
-# Logo centralizado
 logo_base64 = get_image_base64("logo.png")
 st.markdown(
     f"""
@@ -30,7 +29,6 @@ st.markdown(
 )
 st.markdown("---")
 
-col_cliente, col_produtos = st.columns(2)
 col_cliente, col_produtos = st.columns([5, 5])
 
 # ==== Coluna Dados do Cliente ====
@@ -78,11 +76,8 @@ if st.session_state.produtos:
     for idx, item in enumerate(st.session_state.produtos):
         total_geral += item['subtotal']
 
-        # Cria um cartão para cada produto
         with st.container():
-            # col1, col2, col3 = st.columns([5, 2, 1])
             col1, col2 = st.columns([5, 1])
-
             with col1:
                 st.markdown(
                     f"""
@@ -94,15 +89,10 @@ if st.session_state.produtos:
                     """,
                     unsafe_allow_html=True
                 )
-
             with col2:
                 if st.button("❌", key=f"remover_{idx}"):
                     st.session_state.produtos.pop(idx)
                     st.rerun()
-
-
-            # with col3:
-            #     st.write("")  # Espaço vazio ou pode colocar algo futuro
 
     st.markdown(
         f"""
@@ -115,8 +105,65 @@ if st.session_state.produtos:
 else:
     st.info("Nenhum produto adicionado ainda.")
 
-
 st.markdown("---")
+
+# ===== Opções de Impressão =====
+st.subheader("🖨️ Opções de Impressão")
+copias = st.selectbox("Quantas cópias deseja gerar no PDF?", ["1 página", "2 páginas (iguais)"])
+
+# ===== Função de Geração de Página do PDF =====
+def adicionar_pagina_pdf(pdf):
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=10)
+
+    logo_width = 50
+    page_width = 210
+    x_center = (page_width - logo_width) / 2
+    pdf.image(logo_path, x=x_center, y=8, w=logo_width)
+    pdf.ln(20)
+
+    data_hora = datetime.now().strftime('%d/%m/%Y %H:%M')
+    pdf.set_font("Arial", '', 10)
+    pdf.set_xy(160, 20)
+    pdf.cell(40, 8, data_hora, ln=False)
+    pdf.ln(18)
+
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(0, 6, 'Dados do Cliente:', ln=True)
+    pdf.set_font("Arial", '', 9)
+    pdf.cell(0, 5, f'Nome: {cliente_nome}', ln=True)
+    pdf.cell(0, 5, f'Telefone: {cliente_telefone}', ln=True)
+    pdf.cell(0, 5, f'Endereço: {cliente_endereco}', ln=True)
+    pdf.ln(5)
+
+    pdf.set_font("Arial", 'B', 9)
+    pdf.set_fill_color(200, 200, 200)
+    pdf.cell(15, 6, 'Qtd', border=1, align='C', fill=True)
+    pdf.cell(105, 6, 'Produto', border=1, align='C', fill=True)
+    pdf.cell(25, 6, 'Valor (R$)', border=1, align='C', fill=True)
+    pdf.cell(35, 6, 'Subtotal (R$)', border=1, align='C', fill=True)
+    pdf.ln(6)
+
+    pdf.set_font("Arial", '', 9)
+    total_local = 0
+    for item in st.session_state.produtos:
+        total_local += item['subtotal']
+        pdf.cell(15, 6, str(item['quantidade']), border=1, align='C')
+        pdf.cell(105, 6, item['nome'], border=1)
+        pdf.cell(25, 6, f'{item["valor_unitario"]:.2f}', border=1, align='R')
+        pdf.cell(35, 6, f'{item["subtotal"]:.2f}', border=1, align='R')
+        pdf.ln(6)
+
+    pdf.set_font("Arial", 'B', 9)
+    pdf.cell(145, 6, 'Total Geral (R$)', border=1, align='R')
+    pdf.cell(35, 6, f'{total_local:.2f}', border=1, align='R')
+    pdf.ln(10)
+
+    pdf.set_font("Arial", '', 9)
+    pdf.cell(0, 5, "Data de Entrega: ___________________   Assinatura: ___________________________", ln=True)
+    pdf.ln(6)
+    pdf.set_font("Arial", 'I', 8)
+    pdf.cell(0, 10, 'Quitério Severo  |  Instagram: @quisevero', align='C')
 
 # ===== Gerar PDF =====
 if st.button("📄 Gerar Pedido em PDF"):
@@ -126,76 +173,10 @@ if st.button("📄 Gerar Pedido em PDF"):
         st.error("Adicione pelo menos um produto!")
     else:
         pdf = FPDF()
-        pdf.add_page()
-        pdf.set_auto_page_break(auto=True, margin=10)
+        num_copias = 1 if copias == "1 página" else 2
+        for _ in range(num_copias):
+            adicionar_pagina_pdf(pdf)
 
-        # Logotipo
-        # pdf.image(logo_path, x=10, y=8, w=25)
-        logo_width = 50  # ⬅️ Tamanho desejado
-        page_width = 210  # ⬅️ Largura da página A4 em mm
-        x_center = (page_width - logo_width) / 2
-        pdf.image(logo_path, x=x_center, y=8, w=logo_width)
-        pdf.ln(20)
-
-        # Cabeçalho
-        # pdf.set_font("Arial", 'B', 14)
-        # pdf.set_xy(40, 15)
-        # pdf.cell(0, 8, 'Quitério Severo - Cosméticos Profissionais', ln=True, align='L')
-
-        # Data e hora
-        data_hora = datetime.now().strftime('%d/%m/%Y %H:%M')
-        pdf.set_font("Arial", '', 10)
-        pdf.set_xy(160, 20)
-        pdf.cell(40, 8, data_hora, ln=False)
-
-        pdf.ln(18)
-
-        # Dados do Cliente
-        pdf.set_font("Arial", 'B', 10)
-        pdf.cell(0, 6, 'Dados do Cliente:', ln=True)
-        pdf.set_font("Arial", '', 9)
-        pdf.cell(0, 5, f'Nome: {cliente_nome}', ln=True)
-        pdf.cell(0, 5, f'Telefone: {cliente_telefone}', ln=True)
-        pdf.cell(0, 5, f'Endereço: {cliente_endereco}', ln=True)
-        pdf.ln(5)
-
-        # Tabela Cabeçalho
-        pdf.set_font("Arial", 'B', 9)
-        pdf.set_fill_color(200, 200, 200)
-        pdf.cell(15, 6, 'Qtd', border=1, align='C', fill=True)
-        pdf.cell(105, 6, 'Produto', border=1, align='C', fill=True)
-        pdf.cell(25, 6, 'Valor (R$)', border=1, align='C', fill=True)
-        pdf.cell(35, 6, 'Subtotal (R$)', border=1, align='C', fill=True)
-        pdf.ln(6)
-
-        # Dados dos Produtos
-        pdf.set_font("Arial", '', 9)
-        total_geral = 0
-
-        for item in st.session_state.produtos:
-            total_geral += item['subtotal']
-            pdf.cell(15, 6, str(item['quantidade']), border=1, align='C')
-            pdf.cell(105, 6, item['nome'], border=1)
-            pdf.cell(25, 6, f'{item["valor_unitario"]:.2f}', border=1, align='R')
-            pdf.cell(35, 6, f'{item["subtotal"]:.2f}', border=1, align='R')
-            pdf.ln(6)
-
-        # Total Geral
-        pdf.set_font("Arial", 'B', 9)
-        pdf.cell(145, 6, 'Total Geral (R$)', border=1, align='R')
-        pdf.cell(35, 6, f'{total_geral:.2f}', border=1, align='R')
-        pdf.ln(10)
-
-        # Campo para Data de Entrega e Assinatura
-        pdf.set_font("Arial", '', 9)
-        pdf.cell(0, 5, "Data de Entrega: ___________________   Assinatura: ___________________________", ln=True)
-
-        # Rodapé
-        pdf.ln(6)
-        pdf.set_font("Arial", 'I', 8)
-        pdf.cell(0, 10, 'Quitério Severo  |  Instagram: @quisevero', align='C')
-
-        # Salvar PDF
         pdf_output = "pedido.pdf"
         pdf.output(pdf_output)
 
