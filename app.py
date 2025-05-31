@@ -1,6 +1,6 @@
-import requests
-import streamlit as st
+import base64
 from fpdf import FPDF
+import streamlit as st
 from datetime import datetime
 
 # ===== Configurações =====
@@ -8,13 +8,21 @@ st.set_page_config(page_title="Quitério Severo - Emissão de notas de pedidos",
 
 # ===== Logotipo =====
 logo_path = "logo.png"
-col1, col2, col3 = st.columns([1, 2, 1])
-with col1:
-    st.write("  ")
-with col2:
-    st.image(logo_path, width=200)
-with col3:
-    st.write("")
+def get_image_base64(image_path):
+    with open(image_path, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+# Logo centralizado
+logo_base64 = get_image_base64("logo.png")
+st.markdown(
+    f"""
+    <div style="text-align: center; margin-bottom: 20px;">
+        <img src="data:image/png;base64,{logo_base64}" width="200"/>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 st.markdown(
     "<h1 style='text-align: center;'>Emissão de Notas de Pedidos</h1>",
